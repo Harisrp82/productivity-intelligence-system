@@ -50,7 +50,7 @@ class DailyWorkflow:
         # Load configuration
         self.intervals_api_key = os.getenv('INTERVALS_API_KEY')
         self.intervals_athlete_id = os.getenv('INTERVALS_ATHLETE_ID')
-        self.anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
+        self.grok_api_key = os.getenv('GROK_API_KEY')
         self.google_doc_id = os.getenv('GOOGLE_DOC_ID')
         self.database_url = os.getenv('DATABASE_URL', 'sqlite:///productivity.db')
         self.timezone = os.getenv('TIMEZONE', 'UTC')
@@ -61,7 +61,7 @@ class DailyWorkflow:
         # Initialize components
         self.collector = IntervalsICUCollector(self.intervals_api_key, self.intervals_athlete_id)
         self.calculator = ProductivityCalculator()
-        self.insight_generator = InsightGenerator(self.anthropic_api_key)
+        self.insight_generator = InsightGenerator(self.grok_api_key)
         self.db = DatabaseConnection(self.database_url)
         self.google_docs = GoogleDocsClient()
 
@@ -72,7 +72,7 @@ class DailyWorkflow:
         required_vars = [
             'INTERVALS_API_KEY',
             'INTERVALS_ATHLETE_ID',
-            'ANTHROPIC_API_KEY',
+            'GROK_API_KEY',
             'GOOGLE_DOC_ID'
         ]
 

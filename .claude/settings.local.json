@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(git commit --amend -m \"$\\(cat <<''EOF''\nInitial commit: Productivity Intelligence System\n\nComplete AI-powered productivity intelligence system that:\n- Collects wellness data from Amazfit watches via Intervals.icu\n- Calculates hourly productivity scores using circadian rhythm model\n- Generates personalized insights with Claude AI\n- Delivers automated daily reports to Google Docs\n\nFeatures:\n- Science-based productivity scoring \\(two-process sleep model\\)\n- HRV and RHR recovery analysis\n- 24 hourly productivity scores per day\n- Claude AI-powered personalized insights\n- Automated Google Docs delivery\n- Complete setup and testing scripts\n- Comprehensive documentation\n\nTech Stack:\n- Python 3.11+\n- Intervals.icu API\n- Anthropic Claude API \\(Sonnet 4.5\\)\n- SQLite database\n- Google Docs API\n\nReady for production use!\nEOF\n\\)\")"
+    ]
+  }
+}

@@ -1,11 +1,11 @@
 """
-Orchestrates AI insight generation using Claude API.
+Orchestrates AI insight generation using Grok API.
 """
 
 from typing import Dict
 import logging
 
-from .claude_client import ClaudeClient
+from .grok_client import GrokClient
 from .prompt_templates import PromptTemplates
 
 logger = logging.getLogger(__name__)
@@ -14,17 +14,17 @@ logger = logging.getLogger(__name__)
 class InsightGenerator:
     """Generates personalized insights from productivity and wellness data."""
 
-    def __init__(self, claude_api_key: str):
+    def __init__(self, grok_api_key: str):
         """
         Initialize insight generator.
 
         Args:
-            claude_api_key: Anthropic API key
+            grok_api_key: xAI Grok API key
         """
-        self.claude_client = ClaudeClient(claude_api_key)
+        self.grok_client = GrokClient(grok_api_key)
         self.templates = PromptTemplates()
 
-        logger.info("Insight generator initialized")
+        logger.info("Insight generator initialized with Grok")
 
     def generate_daily_report(self, complete_data: Dict) -> str:
         """
@@ -45,8 +45,8 @@ class InsightGenerator:
         logger.info("Generating daily report with AI insights")
 
         try:
-            # Generate AI insights using Claude
-            insight_text = self.claude_client.generate_structured_report(
+            # Generate AI insights using Grok
+            insight_text = self.grok_client.generate_structured_report(
                 system_prompt=self.templates.DAILY_INSIGHT_SYSTEM_PROMPT,
                 data=complete_data,
                 max_tokens=2000
@@ -98,7 +98,7 @@ Provide specific guidance on:
 2. Recovery strategies if needed
 3. Warning signs to watch for"""
 
-            insight = self.claude_client.generate_insight(
+            insight = self.grok_client.generate_insight(
                 system_prompt=self.templates.RECOVERY_ANALYSIS_PROMPT,
                 user_prompt=user_prompt,
                 max_tokens=800
@@ -126,7 +126,7 @@ Provide specific guidance on:
         try:
             user_prompt = self.templates.get_time_block_optimization_prompt(hourly_scores)
 
-            insight = self.claude_client.generate_insight(
+            insight = self.grok_client.generate_insight(
                 system_prompt=self.templates.DAILY_INSIGHT_SYSTEM_PROMPT,
                 user_prompt=user_prompt,
                 max_tokens=1000

@@ -179,6 +179,6 @@ Be specific with time recommendations."""
         report_parts.append("---")
         report_parts.append("")
         report_parts.append(f"*Generated automatically by Productivity Intelligence System*")
-        report_parts.append(f"*Powered by Claude AI and Intervals.icu data*")
+        report_parts.append(f"*Powered by Grok AI and Intervals.icu data*")
 
         return "\n".join(report_parts)
