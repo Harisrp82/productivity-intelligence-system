@@ -39,6 +39,9 @@ logs/*.log
 token.json
 credentials.json
 
+# Configuration status (contains actual API keys)
+YOUR_CONFIGURATION_STATUS.md
+
 # IDE
 .vscode/
 .idea/
