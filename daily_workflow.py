@@ -140,7 +140,7 @@ class DailyWorkflow:
 
             # Step 5: Store report in database
             logger.info("Step 5: Storing report in database")
-            self._store_report(wellness_record.id, date_str, report_text, productivity_results, time_blocks)
+            self._store_report(wellness_record._record_id, date_str, report_text, productivity_results, time_blocks)
 
             # Step 6: Deliver to Google Docs
             logger.info("Step 6: Delivering report to Google Docs")
@@ -209,6 +209,11 @@ class DailyWorkflow:
 
             session.commit()
             logger.info(f"Stored wellness data and {len(productivity_results['hourly_scores'])} hourly scores")
+
+            # Get the ID before leaving the session
+            record_id = record.id
+            session.expunge(record)  # Detach from session
+            record._record_id = record_id  # Store ID as attribute
 
             return record
 

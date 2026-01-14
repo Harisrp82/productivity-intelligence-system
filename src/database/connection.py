@@ -79,8 +79,9 @@ class DatabaseConnection:
             True if connection successful, False otherwise
         """
         try:
+            from sqlalchemy import text
             with self.get_session() as session:
-                session.execute("SELECT 1")
+                session.execute(text("SELECT 1"))
             logger.info("Database connection test successful")
             return True
         except Exception as e:

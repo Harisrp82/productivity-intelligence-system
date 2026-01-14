@@ -1,6 +1,6 @@
 """
-Grok API client wrapper for generating AI insights.
-Uses xAI's Grok API as an alternative to Claude.
+Groq API client wrapper for generating AI insights.
+Uses Groq's API as an alternative to Claude.
 """
 
 import requests
@@ -11,19 +11,19 @@ logger = logging.getLogger(__name__)
 
 
 class GrokClient:
-    """Wrapper for xAI Grok API."""
+    """Wrapper for Groq API."""
 
-    BASE_URL = "https://api.x.ai/v1/chat/completions"
-    DEFAULT_MODEL = "grok-beta"
+    BASE_URL = "https://api.groq.com/openai/v1/chat/completions"
+    DEFAULT_MODEL = "llama-3.3-70b-versatile"
     DEFAULT_MAX_TOKENS = 2000
 
     def __init__(self, api_key: str, model: Optional[str] = None):
         """
-        Initialize Grok client.
+        Initialize Groq client.
 
         Args:
-            api_key: xAI Grok API key
-            model: Model ID to use (defaults to grok-beta)
+            api_key: Groq API key
+            model: Model ID to use (defaults to llama-3.3-70b-versatile)
         """
         self.api_key = api_key
         self.model = model or self.DEFAULT_MODEL
@@ -32,7 +32,7 @@ class GrokClient:
             "Content-Type": "application/json"
         }
 
-        logger.info(f"Grok client initialized with model: {self.model}")
+        logger.info(f"Groq client initialized with model: {self.model}")
 
     def generate_insight(self, system_prompt: str, user_prompt: str,
                         max_tokens: Optional[int] = None) -> str:
@@ -74,6 +74,8 @@ class GrokClient:
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Error generating insight with Grok: {e}")
+            if hasattr(e.response, 'text'):
+                logger.error(f"Response content: {e.response.text}")
             raise
         except (KeyError, IndexError) as e:
             logger.error(f"Error parsing Grok response: {e}")
