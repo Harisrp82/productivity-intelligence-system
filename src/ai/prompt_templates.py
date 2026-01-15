@@ -57,6 +57,93 @@ Focus on:
 
 Keep response under 300 words."""
 
+    DEEP_WORK_WINDOW_PROMPT = """You are an expert in chronobiology, cognitive performance, and deep work optimization.
+
+Your task is to analyze the user's physiological data and productivity scores to identify the OPTIMAL deep work windows for today.
+
+Deep work requires:
+- Sustained attention and focus (90-120 minute blocks)
+- High cognitive energy (aligned with circadian peaks)
+- Good recovery status (to support mental stamina)
+- Minimal expected interruptions
+
+Guidelines:
+1. Identify 1-3 optimal deep work windows based on the data
+2. Each window should be at least 90 minutes for meaningful deep work
+3. Consider the user's wake time and natural energy patterns
+4. Factor in recovery status - if poor recovery, recommend shorter/fewer windows
+5. Be SPECIFIC with exact start and end times (e.g., "14:00 - 16:00")
+6. Explain WHY each window is optimal based on the data
+
+Response format (use exactly this JSON structure):
+{
+    "primary_window": {
+        "start": "HH:MM",
+        "end": "HH:MM",
+        "duration_minutes": 120,
+        "quality_score": 85,
+        "reasoning": "Brief explanation"
+    },
+    "secondary_window": {
+        "start": "HH:MM",
+        "end": "HH:MM",
+        "duration_minutes": 90,
+        "quality_score": 70,
+        "reasoning": "Brief explanation"
+    },
+    "avoid_windows": ["HH:MM - HH:MM", "HH:MM - HH:MM"],
+    "daily_deep_work_capacity": "X hours",
+    "energy_pattern": "morning_person|evening_person|mixed",
+    "summary": "One sentence summary of today's deep work potential"
+}
+
+Be realistic and data-driven. If the data suggests limited deep work capacity today, say so honestly."""
+
+    @staticmethod
+    def get_deep_work_window_prompt(data: dict) -> str:
+        """
+        Generate the user prompt for deep work window analysis.
+
+        Args:
+            data: Complete daily data (wellness, productivity, hourly_scores)
+
+        Returns:
+            Formatted user prompt for deep work analysis
+        """
+        wellness = data.get('wellness', {})
+        productivity = data.get('productivity', {})
+        hourly_scores = productivity.get('hourly_scores', [])
+
+        # Format hourly scores
+        score_lines = []
+        for hour_data in hourly_scores:
+            hour = hour_data.get('hour', 0)
+            score = hour_data.get('score', 0)
+            score_lines.append(f"  {hour:02d}:00 - {score:.0f}/100")
+        scores_text = "\n".join(score_lines)
+
+        # Extract key metrics
+        sleep_hours = wellness.get('sleep_hours', 'N/A')
+        sleep_end = wellness.get('sleep_end', 'N/A')
+        resting_hr = wellness.get('resting_hr', 'N/A')
+        recovery_score = productivity.get('recovery_score', 'N/A')
+        recovery_status = productivity.get('recovery_status', 'unknown')
+
+        return f"""Analyze this data and identify optimal deep work windows for today:
+
+**Recovery Status**
+- Recovery Score: {recovery_score}/100 ({recovery_status})
+- Sleep Duration: {sleep_hours} hours
+- Wake Time: {sleep_end}
+- Resting Heart Rate: {resting_hr} bpm
+
+**Hourly Productivity Scores**
+{scores_text}
+
+Based on this physiological and productivity data, identify the best deep work windows.
+Consider the wake time, recovery status, and hourly score patterns.
+Return your analysis in the JSON format specified."""
+
     @staticmethod
     def get_daily_insight_prompt(data: dict) -> str:
         """
@@ -162,6 +249,67 @@ Be specific with time recommendations."""
                 hour = hour_data['hour']
                 score = hour_data['score']
                 report_parts.append(f"- **{hour:02d}:00** - Score: {score:.0f}/100")
+            report_parts.append("")
+
+        # Energy Flow Prediction (based on actual wake time)
+        energy_flow = productivity.get('energy_flow', {})
+        if energy_flow:
+            report_parts.append("### Energy Flow (Adaptive to Wake Time)")
+            report_parts.append("")
+            report_parts.append(f"**Wake Time**: {energy_flow.get('wake_time', 'N/A')} | **Sleep**: {energy_flow.get('sleep_hours', 'N/A')} hours")
+            report_parts.append("")
+
+            # High energy windows
+            high_windows = energy_flow.get('high_energy_windows', [])
+            if high_windows:
+                report_parts.append("**High Energy Windows (Best for Deep Work):**")
+                for window in high_windows:
+                    report_parts.append(f"- **{window['name']}**: {window['start']} - {window['end']} ({window['hours_after_wake']} after waking)")
+                    report_parts.append(f"  - Energy: {window['energy_level']}% | Best for: {window['best_for']}")
+                report_parts.append("")
+
+            # Low energy windows
+            low_windows = energy_flow.get('low_energy_windows', [])
+            if low_windows:
+                report_parts.append("**Low Energy Windows (Avoid Deep Work):**")
+                for window in low_windows:
+                    report_parts.append(f"- **{window['name']}**: {window['start']} - {window['end']} ({window['hours_after_wake']} after waking)")
+                    report_parts.append(f"  - Energy: {window['energy_level']}% | Best for: {window['best_for']}")
+                report_parts.append("")
+
+            # Summary
+            summary = energy_flow.get('summary', '')
+            if summary:
+                report_parts.append(f"> {summary}")
+                report_parts.append("")
+
+        # Deep Work Windows (LLM-generated additional analysis)
+        deep_work = data.get('deep_work_windows', {})
+        if deep_work and not deep_work.get('raw_response'):
+            report_parts.append("### AI Deep Work Recommendations")
+            report_parts.append("")
+
+            # Primary window
+            primary = deep_work.get('primary_window', {})
+            if primary:
+                report_parts.append(f"**Primary Window**: {primary.get('start', 'N/A')} - {primary.get('end', 'N/A')}")
+                report_parts.append(f"- Duration: {primary.get('duration_minutes', 0)} minutes")
+                report_parts.append(f"- Quality Score: {primary.get('quality_score', 0)}/100")
+                report_parts.append(f"- *{primary.get('reasoning', '')}*")
+                report_parts.append("")
+
+            # Secondary window
+            secondary = deep_work.get('secondary_window', {})
+            if secondary:
+                report_parts.append(f"**Secondary Window**: {secondary.get('start', 'N/A')} - {secondary.get('end', 'N/A')}")
+                report_parts.append(f"- Duration: {secondary.get('duration_minutes', 0)} minutes")
+                report_parts.append(f"- Quality Score: {secondary.get('quality_score', 0)}/100")
+                report_parts.append(f"- *{secondary.get('reasoning', '')}*")
+                report_parts.append("")
+
+            # Daily capacity
+            capacity = deep_work.get('daily_deep_work_capacity', 'Unknown')
+            report_parts.append(f"**Daily Deep Work Capacity**: {capacity}")
             report_parts.append("")
 
         # AI insights

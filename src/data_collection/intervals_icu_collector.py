@@ -62,13 +62,17 @@ class IntervalsICUCollector:
 
     def _parse_wellness_data(self, raw_data: Dict) -> Dict[str, Any]:
         """Parse raw API response into standardized wellness data."""
+        # HRV can be in 'hrv' or 'hrvRMSSD' field depending on data source
+        hrv_value = raw_data.get('hrv') or raw_data.get('hrvRMSSD') or raw_data.get('hrvSDNN')
+
         return {
             'date': raw_data.get('id'),
             'sleep_seconds': raw_data.get('sleepSecs'),
             'sleep_hours': raw_data.get('sleepSecs', 0) / 3600 if raw_data.get('sleepSecs') else None,
             'sleep_quality': raw_data.get('sleepQuality'),
+            'sleep_score': raw_data.get('sleepScore'),
             'resting_hr': raw_data.get('restingHR'),
-            'hrv_rmssd': raw_data.get('hrvRMSSD'),
+            'hrv_rmssd': hrv_value,
             'weight': raw_data.get('weight'),
             'fatigue': raw_data.get('fatigue'),
             'mood': raw_data.get('mood'),
@@ -76,6 +80,7 @@ class IntervalsICUCollector:
             'soreness': raw_data.get('soreness'),
             'sleep_start': raw_data.get('sleepStart'),
             'sleep_end': raw_data.get('sleepEnd'),
+            'steps': raw_data.get('steps'),
             'updated': raw_data.get('updated')
         }
 

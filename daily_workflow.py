@@ -2,7 +2,7 @@
 Main automation script for daily productivity intelligence workflow.
 
 This script orchestrates the complete daily workflow:
-1. Collect wellness data from Intervals.icu
+1. Collect wellness data from Google Fit
 2. Calculate productivity scores
 3. Generate AI insights
 4. Store results in database
@@ -21,7 +21,7 @@ import pytz
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-from data_collection import IntervalsICUCollector
+from data_collection import GoogleFitCollector
 from scoring import ProductivityCalculator
 from ai import InsightGenerator
 from database import DatabaseConnection, WellnessRecord, ProductivityScore, DailyReport
@@ -48,8 +48,6 @@ class DailyWorkflow:
         load_dotenv()
 
         # Load configuration
-        self.intervals_api_key = os.getenv('INTERVALS_API_KEY')
-        self.intervals_athlete_id = os.getenv('INTERVALS_ATHLETE_ID')
         self.grok_api_key = os.getenv('GROK_API_KEY')
         self.google_doc_id = os.getenv('GOOGLE_DOC_ID')
         self.database_url = os.getenv('DATABASE_URL', 'sqlite:///productivity.db')
@@ -59,7 +57,7 @@ class DailyWorkflow:
         self._validate_config()
 
         # Initialize components
-        self.collector = IntervalsICUCollector(self.intervals_api_key, self.intervals_athlete_id)
+        self.collector = GoogleFitCollector()
         self.calculator = ProductivityCalculator()
         self.insight_generator = InsightGenerator(self.grok_api_key)
         self.db = DatabaseConnection(self.database_url)
@@ -70,8 +68,6 @@ class DailyWorkflow:
     def _validate_config(self):
         """Validate required environment variables."""
         required_vars = [
-            'INTERVALS_API_KEY',
-            'INTERVALS_ATHLETE_ID',
             'GROK_API_KEY',
             'GOOGLE_DOC_ID'
         ]
@@ -135,6 +131,11 @@ class DailyWorkflow:
                 'time_blocks': time_blocks,
                 'recent_activities': daily_data.get('recent_activities', [])
             }
+
+            # Step 4a: Generate optimal deep work windows using LLM
+            logger.info("Step 4a: Analyzing optimal deep work windows")
+            deep_work_windows = self.insight_generator.generate_deep_work_windows(complete_data)
+            complete_data['deep_work_windows'] = deep_work_windows
 
             report_text = self.insight_generator.generate_daily_report(complete_data)
 

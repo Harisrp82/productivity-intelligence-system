@@ -2,8 +2,10 @@
 Orchestrates AI insight generation using Grok API.
 """
 
-from typing import Dict
+from typing import Dict, Optional
 import logging
+import json
+import re
 
 from .grok_client import GrokClient
 from .prompt_templates import PromptTemplates
@@ -169,3 +171,68 @@ Peak hours: {', '.join(peak_times)}
 Focus on deep work during peak windows and adjust intensity based on {recovery_status} recovery."""
 
         return summary
+
+    def generate_deep_work_windows(self, complete_data: Dict) -> Optional[Dict]:
+        """
+        Generate optimal deep work windows using LLM analysis.
+
+        Args:
+            complete_data: Dict containing all daily data:
+                - wellness: Wellness metrics (sleep, HR, etc.)
+                - productivity: Productivity scores and hourly data
+
+        Returns:
+            Dict with deep work window recommendations or None if failed
+        """
+        logger.info("Generating deep work windows with AI analysis")
+
+        try:
+            # Build the prompt with data
+            user_prompt = self.templates.get_deep_work_window_prompt(complete_data)
+
+            # Call LLM for analysis
+            response = self.grok_client.generate_insight(
+                system_prompt=self.templates.DEEP_WORK_WINDOW_PROMPT,
+                user_prompt=user_prompt,
+                max_tokens=1000
+            )
+
+            # Parse JSON response
+            deep_work_data = self._parse_deep_work_response(response)
+
+            if deep_work_data:
+                logger.info(f"Deep work analysis complete: {deep_work_data.get('summary', 'No summary')}")
+                return deep_work_data
+            else:
+                logger.warning("Failed to parse deep work response, returning raw")
+                return {'raw_response': response}
+
+        except Exception as e:
+            logger.error(f"Error generating deep work windows: {e}")
+            return None
+
+    def _parse_deep_work_response(self, response: str) -> Optional[Dict]:
+        """
+        Parse the LLM response to extract structured deep work data.
+
+        Args:
+            response: Raw LLM response text
+
+        Returns:
+            Parsed dict or None if parsing fails
+        """
+        try:
+            # Try to find JSON in the response
+            # Look for JSON block between curly braces
+            json_match = re.search(r'\{[\s\S]*\}', response)
+
+            if json_match:
+                json_str = json_match.group()
+                return json.loads(json_str)
+
+            # If no JSON found, try parsing the whole response
+            return json.loads(response)
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse deep work JSON: {e}")
+            return None

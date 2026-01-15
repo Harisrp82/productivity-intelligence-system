@@ -68,10 +68,13 @@ class ProductivityCalculator:
             recovery_factor = 0.7
             logger.warning("Using default recovery factor (0.7) due to missing metrics")
 
-        # Calculate circadian alertness profile for 24 hours
+        # Calculate circadian alertness profile for 24 hours (ADAPTIVE based on wake time)
         circadian_profile = self.circadian_model.calculate_24hour_profile(
             wake_time, sleep_hours
         )
+
+        # Generate energy flow prediction based on actual wake time
+        energy_flow = self.circadian_model.get_energy_flow_prediction(wake_time, sleep_hours)
 
         # Combine circadian and recovery into productivity scores
         hourly_scores = []
@@ -107,7 +110,8 @@ class ProductivityCalculator:
             'recovery_score': round(recovery_factor * 100, 1),
             'average_score': round(np.mean([h['score'] for h in hourly_scores]), 1),
             'wake_time': wake_time.strftime('%H:%M'),
-            'sleep_hours': sleep_hours
+            'sleep_hours': sleep_hours,
+            'energy_flow': energy_flow  # Adaptive energy prediction based on wake time
         }
 
     def _parse_wake_time(self, wellness_data: Dict) -> time:
