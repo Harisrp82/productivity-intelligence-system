@@ -37,7 +37,15 @@ logs/*.log
 
 # Google OAuth credentials
 token.json
+token_fit.json
 credentials.json
+
+# Wake detector state
+.wake_detector_state.json
+
+# Generated files
+energy_flow_graph.*
+nul
 
 # Configuration status (contains actual API keys)
 YOUR_CONFIGURATION_STATUS.md
