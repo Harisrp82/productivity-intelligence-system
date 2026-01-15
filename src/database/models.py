@@ -2,7 +2,7 @@
 SQLAlchemy models for storing wellness and productivity data.
 """
 
-from sqlalchemy import Column, Integer, Float, String, DateTime, Text, ForeignKey, JSON
+from sqlalchemy import Column, Integer, Float, String, DateTime, Text, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -57,6 +57,9 @@ class ProductivityScore(Base):
     """Stores hourly productivity scores for each day."""
 
     __tablename__ = 'productivity_scores'
+    __table_args__ = (
+        UniqueConstraint('wellness_record_id', 'hour', name='uq_wellness_record_hour'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     wellness_record_id = Column(Integer, ForeignKey('wellness_records.id'), nullable=False)

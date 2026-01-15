@@ -182,8 +182,9 @@ class IntervalsICUCollector:
         # Get wellness data for the date
         wellness = self.get_wellness_data(date)
 
-        # Get 7-day baseline for comparison
-        baseline = self.get_7day_baseline(date)
+        # Get 7-day baseline for comparison (excluding current day)
+        # Use the day before 'date' as the end of the baseline window
+        baseline = self.get_7day_baseline(date - timedelta(days=1))
 
         # Get recent activities (last 3 days for context)
         activities = self.get_activities(

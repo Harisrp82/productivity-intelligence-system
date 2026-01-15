@@ -142,9 +142,15 @@ Be specific with time recommendations."""
         # Key metrics summary
         report_parts.append("### Quick Stats")
         report_parts.append("")
-        report_parts.append(f"- **Sleep**: {wellness.get('sleep_hours', 'N/A'):.1f} hours")
-        report_parts.append(f"- **Recovery Score**: {productivity.get('recovery_score', 'N/A')}/100 ({productivity.get('recovery_status', 'unknown')})")
-        report_parts.append(f"- **Avg Productivity**: {productivity.get('average_score', 'N/A')}/100")
+        sleep_hours = wellness.get('sleep_hours')
+        sleep_str = f"{sleep_hours:.1f} hours" if sleep_hours is not None else "N/A"
+        report_parts.append(f"- **Sleep**: {sleep_str}")
+        recovery_score = productivity.get('recovery_score')
+        recovery_str = f"{recovery_score}/100" if recovery_score is not None else "N/A"
+        report_parts.append(f"- **Recovery Score**: {recovery_str} ({productivity.get('recovery_status', 'unknown')})")
+        avg_score = productivity.get('average_score')
+        avg_str = f"{avg_score}/100" if avg_score is not None else "N/A"
+        report_parts.append(f"- **Avg Productivity**: {avg_str}")
         report_parts.append("")
 
         # Peak hours

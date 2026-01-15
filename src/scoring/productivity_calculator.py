@@ -62,7 +62,11 @@ class ProductivityCalculator:
         recovery_results = self.recovery_analyzer.calculate_overall_recovery(
             wellness_data, baseline_data
         )
-        recovery_factor = recovery_results.get('overall_score', 0.7)
+        # Use default of 0.7 if overall_score is None or missing
+        recovery_factor = recovery_results.get('overall_score')
+        if recovery_factor is None:
+            recovery_factor = 0.7
+            logger.warning("Using default recovery factor (0.7) due to missing metrics")
 
         # Calculate circadian alertness profile for 24 hours
         circadian_profile = self.circadian_model.calculate_24hour_profile(

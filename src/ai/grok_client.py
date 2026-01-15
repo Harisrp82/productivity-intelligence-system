@@ -116,10 +116,14 @@ class GrokClient:
         prompt_parts.append("")
 
         # Sleep data
-        wellness = data.get('wellness', {})
+        wellness = data.get('wellness', {}) or {}
         if wellness:
             prompt_parts.append("SLEEP DATA:")
-            prompt_parts.append(f"- Duration: {wellness.get('sleep_hours', 'N/A'):.1f} hours")
+            sleep_hours = wellness.get('sleep_hours')
+            if sleep_hours is not None:
+                prompt_parts.append(f"- Duration: {sleep_hours:.1f} hours")
+            else:
+                prompt_parts.append("- Duration: N/A")
             prompt_parts.append(f"- Wake time: {data.get('productivity', {}).get('wake_time', 'N/A')}")
             if wellness.get('sleep_quality'):
                 prompt_parts.append(f"- Quality rating: {wellness.get('sleep_quality')}/5")
