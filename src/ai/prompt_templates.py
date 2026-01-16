@@ -155,17 +155,27 @@ Return your analysis in the JSON format specified."""
         Returns:
             Formatted user prompt
         """
-        return """Please analyze the following data and provide personalized insights for today.
+        # Extract sleep debt info for explicit inclusion
+        sleep_debt = data.get('sleep_debt')
+        sleep_debt_category = data.get('sleep_debt_category', 'unknown')
+        debt_info = ""
+        if sleep_debt is not None:
+            debt_info = f"\n\nSleep Debt: {sleep_debt:.1f} hours ({sleep_debt_category})"
+            if sleep_debt >= 15:
+                debt_info += "\n**Note: Significant sleep debt detected. Factor this into your recommendations.**"
+
+        return f"""Please analyze the following data and provide personalized insights for today.
 
 Focus on:
 1. How today's recovery metrics compare to baseline
 2. The optimal time windows for deep work
 3. Practical recommendations for energy management
 4. Any red flags or exceptional conditions
+5. Sleep debt impact on today's capacity{debt_info}
 
 Here's the data:
 
-{data}
+{{data}}
 
 Generate your daily insight following the structure in your system prompt."""
 
@@ -232,6 +242,10 @@ Be specific with time recommendations."""
         sleep_hours = wellness.get('sleep_hours')
         sleep_str = f"{sleep_hours:.1f} hours" if sleep_hours is not None else "N/A"
         report_parts.append(f"- **Sleep**: {sleep_str}")
+        sleep_debt = data.get('sleep_debt')
+        debt_str = f"{sleep_debt:.1f} hours" if sleep_debt is not None else "N/A"
+        debt_category = data.get('sleep_debt_category', 'unknown')
+        report_parts.append(f"- **Sleep Debt**: {debt_str} ({debt_category})")
         recovery_score = productivity.get('recovery_score')
         recovery_str = f"{recovery_score}/100" if recovery_score is not None else "N/A"
         report_parts.append(f"- **Recovery Score**: {recovery_str} ({productivity.get('recovery_status', 'unknown')})")
@@ -249,6 +263,15 @@ Be specific with time recommendations."""
                 hour = hour_data['hour']
                 score = hour_data['score']
                 report_parts.append(f"- **{hour:02d}:00** - Score: {score:.0f}/100")
+            report_parts.append("")
+
+        # Sleep Debt Analysis
+        debt_insights = data.get('sleep_debt_insights', [])
+        if debt_insights:
+            report_parts.append("### Sleep Debt Analysis")
+            report_parts.append("")
+            for insight in debt_insights:
+                report_parts.append(f"- {insight}")
             report_parts.append("")
 
         # Energy Flow Prediction (based on actual wake time)
@@ -328,11 +351,5 @@ Be specific with time recommendations."""
             for i, block in enumerate(time_blocks[:3], 1):
                 report_parts.append(f"{i}. **{block['time_window']}** - {block['duration_hours']} hours (Score: {block['avg_score']:.0f})")
             report_parts.append("")
-
-        # Footer
-        report_parts.append("---")
-        report_parts.append("")
-        report_parts.append(f"*Generated automatically by Productivity Intelligence System*")
-        report_parts.append(f"*Powered by Grok AI and Intervals.icu data*")
 
         return "\n".join(report_parts)

@@ -1,5 +1,5 @@
 """
-Recovery analysis based on HRV, resting heart rate, and sleep quality.
+Recovery analysis based on HRV, resting heart rate, sleep quality, and sleep debt.
 """
 
 import numpy as np
@@ -15,12 +15,14 @@ class RecoveryAnalyzer:
 
     Uses HRV (Heart Rate Variability) and RHR (Resting Heart Rate) as primary
     indicators of recovery and autonomic nervous system balance.
+    Sleep debt is factored in to account for cumulative sleep deficits.
     """
 
-    # Recovery score weights
-    HRV_WEIGHT = 0.45
-    RHR_WEIGHT = 0.35
-    SLEEP_QUALITY_WEIGHT = 0.20
+    # Recovery score weights (adjusted to include sleep debt)
+    HRV_WEIGHT = 0.40
+    RHR_WEIGHT = 0.30
+    SLEEP_QUALITY_WEIGHT = 0.15
+    SLEEP_DEBT_WEIGHT = 0.15
 
     # Standard deviation thresholds for categorization
     HRV_OPTIMAL_THRESHOLD = 0.5  # +0.5 SD above baseline
@@ -132,13 +134,15 @@ class RecoveryAnalyzer:
 
         return np.clip(combined_score, 0.0, 1.0)
 
-    def calculate_overall_recovery(self, wellness_data: Dict, baseline_data: Dict) -> Dict:
+    def calculate_overall_recovery(self, wellness_data: Dict, baseline_data: Dict,
+                                    sleep_debt: Optional[float] = None) -> Dict:
         """
         Calculate comprehensive recovery score.
 
         Args:
             wellness_data: Today's wellness metrics
             baseline_data: 7-day baseline averages
+            sleep_debt: Accumulated sleep debt in hours (optional)
 
         Returns:
             Dict with recovery scores and status
@@ -175,6 +179,15 @@ class RecoveryAnalyzer:
             scores['sleep'] = None
             logger.warning("Sleep data not available for recovery calculation")
 
+        # Sleep debt score
+        if sleep_debt is not None:
+            from .sleep_debt_calculator import SleepDebtCalculator
+            debt_calculator = SleepDebtCalculator()
+            scores['sleep_debt'] = debt_calculator.calculate_debt_impact_factor(sleep_debt)
+        else:
+            scores['sleep_debt'] = None
+            logger.info("Sleep debt not available for recovery calculation")
+
         # Calculate weighted overall score
         available_scores = [(k, v) for k, v in scores.items() if v is not None]
 
@@ -185,6 +198,8 @@ class RecoveryAnalyzer:
                 'hrv_score': None,
                 'rhr_score': None,
                 'sleep_score': None,
+                'sleep_debt_score': None,
+                'sleep_debt': sleep_debt,
                 'status': 'unknown',
                 'available_metrics': 0
             }
@@ -193,7 +208,8 @@ class RecoveryAnalyzer:
         weights = {
             'hrv': self.HRV_WEIGHT,
             'rhr': self.RHR_WEIGHT,
-            'sleep': self.SLEEP_QUALITY_WEIGHT
+            'sleep': self.SLEEP_QUALITY_WEIGHT,
+            'sleep_debt': self.SLEEP_DEBT_WEIGHT
         }
 
         total_weight = sum(weights[k] for k, _ in available_scores)
@@ -218,6 +234,8 @@ class RecoveryAnalyzer:
             'hrv_score': scores['hrv'],
             'rhr_score': scores['rhr'],
             'sleep_score': scores['sleep'],
+            'sleep_debt_score': scores.get('sleep_debt'),
+            'sleep_debt': sleep_debt,
             'status': status,
             'available_metrics': len(available_scores)
         }

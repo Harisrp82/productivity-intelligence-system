@@ -34,6 +34,9 @@ class WellnessRecord(Base):
     baseline_rhr = Column(Float)
     baseline_sleep = Column(Float)
 
+    # Sleep debt tracking
+    sleep_debt = Column(Float)  # Cumulative sleep debt in hours
+
     # Subjective metrics
     mood = Column(Integer)
     fatigue = Column(Integer)

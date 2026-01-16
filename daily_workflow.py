@@ -22,7 +22,7 @@ import pytz
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from data_collection import GoogleFitCollector
-from scoring import ProductivityCalculator
+from scoring import ProductivityCalculator, SleepDebtCalculator
 from ai import InsightGenerator
 from database import DatabaseConnection, WellnessRecord, ProductivityScore, DailyReport
 from delivery import GoogleDocsClient
@@ -59,6 +59,7 @@ class DailyWorkflow:
         # Initialize components
         self.collector = GoogleFitCollector()
         self.calculator = ProductivityCalculator()
+        self.sleep_debt_calculator = SleepDebtCalculator()
         self.insight_generator = InsightGenerator(self.grok_api_key)
         self.db = DatabaseConnection(self.database_url)
         self.google_docs = GoogleDocsClient()
@@ -78,18 +79,44 @@ class DailyWorkflow:
             logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
             raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
+    def _get_previous_sleep_debt(self, date_str: str) -> float:
+        """
+        Retrieve previous day's sleep debt from database.
+
+        Args:
+            date_str: Current date in YYYY-MM-DD format
+
+        Returns:
+            Previous day's sleep debt in hours, or None if not found
+        """
+        current_date = datetime.strptime(date_str, '%Y-%m-%d')
+        previous_date = current_date - timedelta(days=1)
+        previous_date_str = previous_date.strftime('%Y-%m-%d')
+
+        with self.db.get_session() as session:
+            previous_record = session.query(WellnessRecord).filter_by(
+                date=previous_date_str
+            ).first()
+
+            if previous_record and previous_record.sleep_debt is not None:
+                logger.info(f"Found previous sleep debt: {previous_record.sleep_debt:.1f}h from {previous_date_str}")
+                return previous_record.sleep_debt
+
+            logger.info(f"No previous sleep debt found for {previous_date_str}")
+            return None
+
     def run(self, date: datetime = None):
         """
         Run the complete daily workflow.
 
         Args:
-            date: Date to process (defaults to yesterday for morning runs)
+            date: Date to process (defaults to today for morning runs)
         """
-        # Default to yesterday (for 6 AM runs processing previous day)
+        # Default to today - processes last night's sleep that ended this morning
         if date is None:
             tz = pytz.timezone(self.timezone)
             now = datetime.now(tz)
-            date = (now - timedelta(days=1)).date()
+            date = now.date()
         else:
             date = date.date() if isinstance(date, datetime) else date
 
@@ -104,6 +131,22 @@ class DailyWorkflow:
             if not daily_data['wellness']:
                 logger.error(f"No wellness data available for {date_str}")
                 return False
+
+            # Step 1a: Calculate sleep debt
+            logger.info("Step 1a: Calculating sleep debt")
+            previous_debt = self._get_previous_sleep_debt(date_str)
+            sleep_need = daily_data['baseline'].get('avg_sleep_hours') or 8.0
+            actual_sleep = daily_data['wellness'].get('sleep_hours')
+
+            sleep_debt = self.sleep_debt_calculator.calculate_daily_debt(
+                previous_debt=previous_debt,
+                actual_sleep=actual_sleep,
+                sleep_need=sleep_need
+            )
+            logger.info(f"Sleep debt calculated: {sleep_debt:.1f} hours")
+
+            # Add sleep debt to wellness data for downstream use
+            daily_data['wellness']['sleep_debt'] = sleep_debt
 
             # Step 2: Calculate productivity scores
             logger.info("Step 2: Calculating productivity scores")
@@ -123,12 +166,24 @@ class DailyWorkflow:
 
             # Step 4: Generate AI insights
             logger.info("Step 4: Generating AI insights")
+
+            # Generate sleep debt insights
+            sleep_debt_insights = self.sleep_debt_calculator.get_debt_insights(
+                debt=sleep_debt,
+                actual_sleep=actual_sleep,
+                sleep_need=sleep_need
+            )
+            sleep_debt_category = self.sleep_debt_calculator.get_debt_category(sleep_debt)
+
             complete_data = {
                 'date': date_str,
                 'wellness': daily_data['wellness'],
                 'baseline': daily_data['baseline'],
                 'productivity': productivity_results,
                 'time_blocks': time_blocks,
+                'sleep_debt': sleep_debt,
+                'sleep_debt_category': sleep_debt_category,
+                'sleep_debt_insights': sleep_debt_insights,
                 'recent_activities': daily_data.get('recent_activities', [])
             }
 
@@ -183,6 +238,7 @@ class DailyWorkflow:
             record.baseline_hrv = baseline.get('avg_hrv')
             record.baseline_rhr = baseline.get('avg_rhr')
             record.baseline_sleep = baseline.get('avg_sleep_hours')
+            record.sleep_debt = wellness.get('sleep_debt')  # Store cumulative sleep debt
             record.mood = wellness.get('mood')
             record.fatigue = wellness.get('fatigue')
             record.stress = wellness.get('stress')
