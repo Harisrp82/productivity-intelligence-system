@@ -38,6 +38,8 @@ logs/*.log
 # Google OAuth credentials
 token.json
 token_fit.json
+token_calendar.json
+token_sheets.json
 credentials.json
 
 # Wake detector state

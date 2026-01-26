@@ -1,0 +1,100 @@
+name: Daily Productivity Workflow
+
+on:
+  schedule:
+    # Run at 6:00 AM UTC daily (adjust for your timezone)
+    # For EST: use "0 11 * * *" (6 AM EST = 11 AM UTC)
+    # For PST: use "0 14 * * *" (6 AM PST = 2 PM UTC)
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    # Allow manual triggering from GitHub Actions UI
+    inputs:
+      date:
+        description: "Date to process (YYYY-MM-DD, leave empty for today)"
+        required: false
+        type: string
+
+env:
+  GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+  GOOGLE_DOC_ID: ${{ secrets.GOOGLE_DOC_ID }}
+  GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+  DATABASE_URL: "sqlite:///productivity.db"
+  TIMEZONE: ${{ vars.TIMEZONE || 'UTC' }}
+
+jobs:
+  run-workflow:
+    name: Run Daily Productivity Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Restore database
+        uses: actions/cache@v4
+        with:
+          path: productivity.db
+          key: productivity-db-${{ github.run_number }}
+          restore-keys: |
+            productivity-db-
+
+      - name: Set up Google credentials
+        run: |
+          echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
+          echo '${{ secrets.GOOGLE_TOKEN_JSON }}' > token.json
+          echo '${{ secrets.GOOGLE_TOKEN_FIT_JSON }}' > token_fit.json
+          # Optional tokens
+          if [ -n "${{ secrets.GOOGLE_TOKEN_CALENDAR_JSON }}" ]; then
+            echo '${{ secrets.GOOGLE_TOKEN_CALENDAR_JSON }}' > token_calendar.json
+          fi
+          if [ -n "${{ secrets.GOOGLE_TOKEN_SHEETS_JSON }}" ]; then
+            echo '${{ secrets.GOOGLE_TOKEN_SHEETS_JSON }}' > token_sheets.json
+          fi
+
+      - name: Create logs directory
+        run: mkdir -p logs
+
+      - name: Run daily workflow
+        run: python daily_workflow.py
+
+      - name: Upload logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-logs-${{ github.run_number }}
+          path: logs/
+          retention-days: 30
+
+      - name: Save database
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: productivity.db
+          key: productivity-db-${{ github.run_number }}
+
+      - name: Report status
+        if: failure()
+        run: |
+          echo "::error::Daily productivity workflow failed. Check logs artifact for details."
+          if [ -f logs/daily_workflow.log ]; then
+            echo "--- Last 50 lines of log ---"
+            tail -50 logs/daily_workflow.log
+          fi
