@@ -18,3 +18,8 @@ pandas>=2.0.0
 
 # Time handling
 pytz>=2023.3
+
+# Dashboard server
+flask>=3.0.0
+flask-cors>=4.0.0
+gunicorn>=21.0.0

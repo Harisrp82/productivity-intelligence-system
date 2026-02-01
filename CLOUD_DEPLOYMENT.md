@@ -522,4 +522,156 @@ pip cache purge
 
 ---
 
+---
+
+## 11. Deploy Live Dashboard (Optional)
+
+Run your real-time dashboard on Oracle Cloud so you can access it from anywhere.
+
+### Step 11.1: Install Gunicorn (Production Server)
+
+On Oracle VM:
+```bash
+cd ~/productivity-intelligence
+source venv/bin/activate
+pip install gunicorn
+```
+
+### Step 11.2: Open Port 5000 in Oracle Cloud
+
+1. Go to Oracle Cloud Console → **Networking** → **Virtual Cloud Networks**
+2. Click on your VCN → **Security Lists** → **Default Security List**
+3. Click **"Add Ingress Rules"**
+4. Add rule:
+   - **Source CIDR**: `0.0.0.0/0`
+   - **Destination Port Range**: `5000`
+   - **Description**: `Dashboard HTTP`
+5. Click **"Add Ingress Rules"**
+
+### Step 11.3: Open Firewall on VM
+
+Run on Oracle VM:
+```bash
+# For Oracle Linux
+sudo firewall-cmd --permanent --add-port=5000/tcp
+sudo firewall-cmd --reload
+
+# Verify
+sudo firewall-cmd --list-ports
+```
+
+### Step 11.4: Test Dashboard Manually
+
+```bash
+cd ~/productivity-intelligence
+source venv/bin/activate
+gunicorn --bind 0.0.0.0:5000 dashboard_server:app
+```
+
+Open in browser: `http://<YOUR_PUBLIC_IP>:5000`
+
+Press `Ctrl+C` to stop after testing.
+
+### Step 11.5: Set Up as System Service
+
+Create systemd service:
+```bash
+sudo nano /etc/systemd/system/dashboard.service
+```
+
+Paste:
+```ini
+[Unit]
+Description=Productivity Intelligence Dashboard Server
+After=network.target
+
+[Service]
+Type=simple
+User=opc
+WorkingDirectory=/home/opc/productivity-intelligence
+Environment="PATH=/home/opc/productivity-intelligence/venv/bin"
+ExecStart=/home/opc/productivity-intelligence/venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 2 dashboard_server:app
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Save with `Ctrl+O`, exit with `Ctrl+X`.
+
+### Step 11.6: Enable and Start Service
+
+```bash
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Enable auto-start on boot
+sudo systemctl enable dashboard
+
+# Start the service
+sudo systemctl start dashboard
+
+# Check status
+sudo systemctl status dashboard
+```
+
+### Step 11.7: Verify Dashboard
+
+Open in browser: `http://<YOUR_PUBLIC_IP>:5000`
+
+You should see your live dashboard with real-time data!
+
+### Dashboard Service Commands
+
+| Task | Command |
+|------|---------|
+| Start dashboard | `sudo systemctl start dashboard` |
+| Stop dashboard | `sudo systemctl stop dashboard` |
+| Restart dashboard | `sudo systemctl restart dashboard` |
+| Check status | `sudo systemctl status dashboard` |
+| View logs | `sudo journalctl -u dashboard -f` |
+
+### Optional: Custom Domain with HTTPS
+
+For a custom domain with HTTPS:
+1. Register a domain (or use free subdomain from services like DuckDNS)
+2. Point domain to your Oracle VM's public IP
+3. Install Nginx as reverse proxy
+4. Use Certbot for free SSL certificate
+
+```bash
+# Install Nginx
+sudo dnf install nginx -y
+
+# Configure Nginx (example)
+sudo nano /etc/nginx/conf.d/dashboard.conf
+```
+
+Add:
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+```bash
+# Start Nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
+
+# Get SSL certificate (after domain is pointing to IP)
+sudo dnf install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d yourdomain.com
+```
+
+---
+
 Congratulations! Your Productivity Intelligence System is now running 24/7 in the cloud for free.

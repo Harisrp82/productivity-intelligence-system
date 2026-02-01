@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productivity Intelligence Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            padding: 20px;
+        }
+
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .date {
+            color: #8892b0;
+            font-size: 1.1rem;
+            margin-top: 5px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            color: #8892b0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .sleep-score { grid-column: span 3; text-align: center; }
+        .sleep-debt { grid-column: span 3; }
+        .optimal-bedtime { grid-column: span 6; }
+        .energy-flow { grid-column: span 6; }
+        .energy-phases { grid-column: span 6; }
+        .peak-windows { grid-column: span 6; }
+        .ultradian-rhythm { grid-column: span 12; }
+        .weekly-trend { grid-column: span 6; }
+        .heatmap { grid-column: span 12; }
+
+        .circular-progress {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 20px;
+        }
+
+        .circular-progress svg { transform: rotate(-90deg); }
+        .circular-progress .bg { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 12; }
+        .circular-progress .progress {
+            fill: none;
+            stroke: url(#gradient);
+            stroke-width: 12;
+            stroke-linecap: round;
+            stroke-dasharray: 503;
+            stroke-dashoffset: 0;
+        }
+
+        .circular-progress .score-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .circular-progress .score-value .number {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .circular-progress .score-value .label { font-size: 0.9rem; color: #8892b0; }
+
+        .sleep-details { display: flex; justify-content: space-around; margin-top: 15px; }
+        .sleep-detail { text-align: center; }
+        .sleep-detail .value { font-size: 1.4rem; font-weight: 600; color: #a78bfa; }
+        .sleep-detail .label { font-size: 0.75rem; color: #8892b0; margin-top: 3px; }
+
+        .debt-indicator { text-align: center; padding: 20px 0; }
+        .debt-value { font-size: 3.5rem; font-weight: 700; }
+        .debt-value.good { color: #10b981; }
+        .debt-value.warning { color: #f59e0b; }
+        .debt-value.danger { color: #ef4444; }
+        .debt-label { font-size: 1rem; color: #8892b0; margin-top: 5px; }
+        .debt-status { display: inline-block; padding: 8px 20px; border-radius: 20px; font-size: 0.85rem; margin-top: 15px; }
+        .debt-status.good { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .debt-status.warning { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .debt-status.danger { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+        /* Optimal Bedtime Styles */
+        .bedtime-main { text-align: center; padding: 15px 0; margin-bottom: 20px; }
+        .bedtime-value { font-size: 3.5rem; font-weight: 700; background: linear-gradient(135deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .bedtime-label { font-size: 1rem; color: #8892b0; margin-top: 5px; }
+        .bedtime-note { display: inline-block; padding: 8px 16px; background: rgba(99, 102, 241, 0.15); border-radius: 20px; font-size: 0.8rem; color: #a78bfa; margin-top: 12px; }
+
+        .bedtime-windows { margin-top: 15px; }
+        .window-title { font-size: 0.8rem; color: #8892b0; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+        .bedtime-option { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; background: rgba(255, 255, 255, 0.03); border-radius: 10px; margin-bottom: 8px; border-left: 3px solid transparent; transition: all 0.3s; }
+        .bedtime-option:hover { background: rgba(255, 255, 255, 0.06); }
+        .bedtime-option.recommended { border-left-color: #10b981; background: rgba(16, 185, 129, 0.08); }
+        .bedtime-option .time { font-size: 1.3rem; font-weight: 600; color: #fff; }
+        .bedtime-option .cycles { font-size: 0.8rem; color: #8892b0; }
+        .bedtime-option .rec-badge { font-size: 0.65rem; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 3px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .sleep-gates { margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+        .gates-title { font-size: 0.8rem; color: #8892b0; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .gates-title .info-icon { font-size: 0.9rem; cursor: help; }
+        .gate-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+        .gate-pill { background: rgba(139, 92, 246, 0.15); color: #a78bfa; padding: 6px 14px; border-radius: 15px; font-size: 0.85rem; font-weight: 500; }
+
+        .chart-container { height: 200px; margin-top: 10px; }
+
+        .phase-bars { margin-top: 15px; }
+        .phase-bar { margin-bottom: 18px; }
+        .phase-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .phase-name { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+        .phase-icon { font-size: 1.2rem; }
+        .phase-value { font-weight: 600; color: #a78bfa; }
+        .phase-track { height: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 5px; overflow: hidden; }
+        .phase-fill { height: 100%; border-radius: 5px; transition: width 1s ease-out; }
+        .phase-fill.morning { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+        .phase-fill.midday { background: linear-gradient(90deg, #fb923c, #ea580c); }
+        .phase-fill.afternoon { background: linear-gradient(90deg, #a78bfa, #7c3aed); }
+        .phase-fill.evening { background: linear-gradient(90deg, #60a5fa, #3b82f6); }
+        .peak-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
+
+        .window-list { margin-top: 15px; }
+        .window-item { display: flex; align-items: center; padding: 15px; background: rgba(255, 255, 255, 0.03); border-radius: 12px; margin-bottom: 10px; border-left: 4px solid; }
+        .window-item:nth-child(1) { border-left-color: #10b981; }
+        .window-item:nth-child(2) { border-left-color: #667eea; }
+        .window-item:nth-child(3) { border-left-color: #8b5cf6; }
+        .window-rank { font-size: 1.5rem; font-weight: 700; color: rgba(255, 255, 255, 0.3); margin-right: 15px; width: 30px; }
+        .window-info { flex: 1; }
+        .window-time { font-size: 1.1rem; font-weight: 600; }
+        .window-label { font-size: 0.8rem; color: #8892b0; }
+        .window-score { font-size: 1.8rem; font-weight: 700; background: linear-gradient(135deg, #10b981, #059669); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+        .weekly-bars { display: flex; justify-content: space-between; align-items: flex-end; height: 150px; margin-top: 20px; padding: 0 10px; }
+        .day-column { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .day-bar-container { height: 120px; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+        .day-bar { width: 30px; border-radius: 8px 8px 0 0; transition: height 1s ease-out; position: relative; }
+        .day-bar::after { content: attr(data-hours); position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: #8892b0; }
+        .day-bar.excellent { background: linear-gradient(180deg, #10b981, #059669); }
+        .day-bar.good { background: linear-gradient(180deg, #667eea, #764ba2); }
+        .day-bar.moderate { background: linear-gradient(180deg, #f59e0b, #d97706); }
+        .day-bar.poor { background: linear-gradient(180deg, #ef4444, #dc2626); }
+        .day-label { margin-top: 10px; font-size: 0.8rem; color: #8892b0; }
+
+        .heatmap-grid { display: grid; grid-template-columns: 60px repeat(24, 1fr); gap: 3px; margin-top: 15px; }
+        .heatmap-label { font-size: 0.75rem; color: #8892b0; display: flex; align-items: center; }
+        .heatmap-cell { aspect-ratio: 1; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600; transition: transform 0.2s; }
+        .heatmap-cell:hover { transform: scale(1.2); z-index: 10; }
+        .heatmap-cell.level-5 { background: linear-gradient(135deg, #10b981, #059669); }
+        .heatmap-cell.level-4 { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .heatmap-cell.level-3 { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .heatmap-cell.level-2 { background: linear-gradient(135deg, #f97316, #ea580c); }
+        .heatmap-cell.level-1 { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .hour-label { font-size: 0.7rem; color: #8892b0; text-align: center; }
+
+        .heatmap-legend { display: flex; justify-content: center; gap: 15px; margin-top: 15px; }
+        .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: #8892b0; }
+        .legend-color { width: 12px; height: 12px; border-radius: 3px; }
+
+        /* Ultradian Rhythm Styles */
+        .ultradian-container { display: grid; grid-template-columns: 280px 1fr; gap: 30px; }
+        .ultradian-stats { display: flex; flex-direction: column; gap: 20px; }
+        .ultradian-stat { background: rgba(255, 255, 255, 0.03); border-radius: 15px; padding: 20px; border-left: 4px solid; }
+        .ultradian-stat.cycles { border-left-color: #a78bfa; }
+        .ultradian-stat.next-peak { border-left-color: #10b981; }
+        .ultradian-stat.quality { border-left-color: #f59e0b; }
+        .stat-label { font-size: 0.8rem; color: #8892b0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 2.2rem; font-weight: 700; margin: 8px 0; }
+        .stat-value.cycles { background: linear-gradient(135deg, #a78bfa, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .stat-value.next-peak { color: #10b981; }
+        .stat-sublabel { font-size: 0.85rem; color: #a78bfa; }
+
+        .ultradian-visual { display: flex; flex-direction: column; }
+        .focus-blocks-container { margin-bottom: 20px; }
+        .focus-blocks { display: flex; gap: 8px; flex-wrap: wrap; }
+        .focus-block { flex: 1; min-width: 140px; background: rgba(255, 255, 255, 0.03); border-radius: 12px; padding: 15px; text-align: center; position: relative; overflow: hidden; }
+        .focus-block::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+        .focus-block.peak::before { background: linear-gradient(90deg, #10b981, #059669); }
+        .focus-block.high::before { background: linear-gradient(90deg, #667eea, #764ba2); }
+        .focus-block.moderate::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .focus-block.wind-down::before { background: linear-gradient(90deg, #6366f1, #4f46e5); }
+        .block-time { font-size: 0.9rem; font-weight: 600; color: #fff; margin-bottom: 5px; }
+        .block-type { font-size: 0.7rem; color: #8892b0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .block-num { position: absolute; top: 10px; right: 10px; font-size: 0.7rem; color: rgba(255, 255, 255, 0.3); font-weight: 700; }
+
+        .wave-chart-container { height: 120px; margin-top: 15px; }
+
+        .break-times { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+        .break-pill { display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.05); border-radius: 20px; padding: 8px 15px; }
+        .break-icon { font-size: 1rem; }
+        .break-time { font-size: 0.85rem; font-weight: 600; }
+        .break-duration { font-size: 0.7rem; color: #8892b0; }
+
+        .ultradian-insight { margin-top: 20px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border-radius: 12px; padding: 15px 20px; border-left: 4px solid #667eea; }
+        .insight-title { font-size: 0.85rem; font-weight: 600; color: #667eea; margin-bottom: 8px; }
+        .insight-text { font-size: 0.9rem; color: #ccd6f6; line-height: 1.5; }
+
+        .footer { text-align: center; margin-top: 30px; padding: 20px; color: #8892b0; font-size: 0.85rem; }
+
+        @media (max-width: 1200px) {
+            .grid { grid-template-columns: repeat(6, 1fr); }
+            .sleep-score, .sleep-debt, .energy-flow, .energy-phases, .peak-windows, .weekly-trend { grid-column: span 3; }
+            .optimal-bedtime { grid-column: span 6; }
+            .heatmap, .ultradian-rhythm { grid-column: span 6; }
+            .ultradian-container { grid-template-columns: 1fr; }
+            .focus-blocks { justify-content: center; }
+        }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            .sleep-score, .sleep-debt, .optimal-bedtime, .energy-flow, .energy-phases, .peak-windows, .weekly-trend, .heatmap, .ultradian-rhythm { grid-column: span 1; }
+            .ultradian-container { grid-template-columns: 1fr; gap: 20px; }
+            .ultradian-stats { flex-direction: row; flex-wrap: wrap; }
+            .ultradian-stat { flex: 1; min-width: 150px; }
+            .focus-block { min-width: 120px; }
+            .bedtime-value { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <header class="header">
+            <h1>Productivity Intelligence</h1>
+            <p class="date">January 25, 2026</p>
+        </header>
+
+        <div class="grid">
+            <!-- Sleep Score -->
+            <div class="card sleep-score">
+                <h3 class="card-title">Sleep Quality</h3>
+                <div class="circular-progress">
+                    <svg width="180" height="180" viewBox="0 0 180 180">
+                        <defs>
+                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#667eea" />
+                                <stop offset="100%" stop-color="#764ba2" />
+                            </linearGradient>
+                        </defs>
+                        <circle class="bg" cx="90" cy="90" r="80" />
+                        <circle class="progress" cx="90" cy="90" r="80" />
+                    </svg>
+                    <div class="score-value">
+                        <div class="number">100</div>
+                        <div class="label">Score</div>
+                    </div>
+                </div>
+                <div class="sleep-details">
+                    <div class="sleep-detail">
+                        <div class="value">9.2h</div>
+                        <div class="label">Duration</div>
+                    </div>
+                    <div class="sleep-detail">
+                        <div class="value">04:54</div>
+                        <div class="label">Bedtime</div>
+                    </div>
+                    <div class="sleep-detail">
+                        <div class="value">14:04</div>
+                        <div class="label">Wake up</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sleep Debt -->
+            <div class="card sleep-debt">
+                <h3 class="card-title">Sleep Debt</h3>
+                <div class="debt-indicator">
+                    <div class="debt-value good">0.0h</div>
+                    <div class="debt-label">Accumulated Debt</div>
+                    <span class="debt-status good">Fully Recovered</span>
+                </div>
+            </div>
+
+            <!-- Optimal Bedtime -->
+            <div class="card optimal-bedtime">
+                <h3 class="card-title">Optimal Bedtime Tonight</h3>
+                <div class="bedtime-main">
+                    <div class="bedtime-value">06:19</div>
+                    <div class="bedtime-label">Recommended for 5 sleep cycles</div>
+                    <div class="bedtime-note">Well rested - 5 cycles maintains optimal recovery</div>
+                </div>
+                <div class="bedtime-windows">
+                    <div class="window-title">Bedtime Options (for 14:04 wake)</div>
+
+                    <div class="bedtime-option recommended">
+                        <div>
+                            <span class="time">06:19</span>
+                            <span class="cycles">5 cycles - 7.5h</span>
+                        </div>
+                        <span class="rec-badge">Best</span>
+                    </div>
+                    <div class="bedtime-option ">
+                        <div>
+                            <span class="time">05:34</span>
+                            <span class="cycles">5.5 cycles - 8.25h</span>
+                        </div>
+                        
+                    </div>
+                    <div class="bedtime-option ">
+                        <div>
+                            <span class="time">04:49</span>
+                            <span class="cycles">6 cycles - 9h</span>
+                        </div>
+                        
+                    </div>
+                </div>
+                <div class="sleep-gates">
+                    <div class="gates-title">
+                        <span>Natural Sleep Gates</span>
+                        <span class="info-icon" title="Sleep gates are windows when melatonin peaks, making it easier to fall asleep">&#9432;</span>
+                    </div>
+                    <div class="gate-pills">
+                        <span class="gate-pill">21:00</span>
+                        <span class="gate-pill">22:30</span>
+                        <span class="gate-pill">00:00</span>
+                        <span class="gate-pill">01:30</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Energy Flow Chart -->
+            <div class="card energy-flow">
+                <h3 class="card-title">24-Hour Energy Flow</h3>
+                <div class="chart-container">
+                    <canvas id="energyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Energy Phases -->
+            <div class="card energy-phases">
+                <h3 class="card-title">Energy Phases</h3>
+                <div class="phase-bars">
+                    <div class="phase-bar">
+                        <div class="phase-header">
+                            <span class="phase-name">
+                                <span class="phase-icon">🌅</span> Morning (6-12)
+                                
+                            </span>
+                            <span class="phase-value">58%</span>
+                        </div>
+                        <div class="phase-track">
+                            <div class="phase-fill morning" style="width: 58.083333333333336%"></div>
+                        </div>
+                    </div>
+                    <div class="phase-bar">
+                        <div class="phase-header">
+                            <span class="phase-name">
+                                <span class="phase-icon">☀️</span> Midday (12-14)
+                                
+                            </span>
+                            <span class="phase-value">54%</span>
+                        </div>
+                        <div class="phase-track">
+                            <div class="phase-fill midday" style="width: 54.4%"></div>
+                        </div>
+                    </div>
+                    <div class="phase-bar">
+                        <div class="phase-header">
+                            <span class="phase-name">
+                                <span class="phase-icon">🌤️</span> Afternoon (14-18)
+                                <span class="peak-badge">PEAK</span>
+                            </span>
+                            <span class="phase-value">86%</span>
+                        </div>
+                        <div class="phase-track">
+                            <div class="phase-fill afternoon" style="width: 85.85000000000001%"></div>
+                        </div>
+                    </div>
+                    <div class="phase-bar">
+                        <div class="phase-header">
+                            <span class="phase-name">
+                                <span class="phase-icon">🌙</span> Evening (18-22)
+                                
+                            </span>
+                            <span class="phase-value">85%</span>
+                        </div>
+                        <div class="phase-track">
+                            <div class="phase-fill evening" style="width: 85.2%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Peak Windows -->
+            <div class="card peak-windows">
+                <h3 class="card-title">Optimal Deep Work Windows</h3>
+                <div class="window-list">
+                    <div class="window-item">
+                        <span class="window-rank">#1</span>
+                        <div class="window-info">
+                            <div class="window-time">15:00 - 16:00</div>
+                            <div class="window-label">Peak Performance</div>
+                        </div>
+                        <span class="window-score">97%</span>
+                    </div>
+                    <div class="window-item">
+                        <span class="window-rank">#2</span>
+                        <div class="window-info">
+                            <div class="window-time">16:00 - 17:00</div>
+                            <div class="window-label">High Focus</div>
+                        </div>
+                        <span class="window-score">96%</span>
+                    </div>
+                    <div class="window-item">
+                        <span class="window-rank">#3</span>
+                        <div class="window-info">
+                            <div class="window-time">17:00 - 18:00</div>
+                            <div class="window-label">Strong Energy</div>
+                        </div>
+                        <span class="window-score">94%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ultradian Rhythm -->
+            <div class="card ultradian-rhythm">
+                <h3 class="card-title">Ultradian Rhythm Insights</h3>
+                <div class="ultradian-container">
+                    <div class="ultradian-stats">
+                        <div class="ultradian-stat cycles">
+                            <div class="stat-label">Sleep Cycles Completed</div>
+                            <div class="stat-value cycles">6</div>
+                            <div class="stat-sublabel">Optimal (9.2h / 1.5h per cycle)</div>
+                        </div>
+                        <div class="ultradian-stat next-peak">
+                            <div class="stat-label">Next Energy Peak In</div>
+                            <div class="stat-value next-peak">74 min</div>
+                            <div class="stat-sublabel">Based on 90-min ultradian cycle</div>
+                        </div>
+                        <div class="ultradian-stat quality">
+                            <div class="stat-label">Recommended Breaks</div>
+                            <div class="break-times">
+                                <div class="break-pill">
+                                    <span class="break-icon">☕</span>
+                                    <span class="break-time">15:34</span>
+                                    <span class="break-duration">15min</span>
+                                </div>
+                                <div class="break-pill">
+                                    <span class="break-icon">🚶</span>
+                                    <span class="break-time">17:24</span>
+                                    <span class="break-duration">20min</span>
+                                </div>
+                                <div class="break-pill">
+                                    <span class="break-icon">☕</span>
+                                    <span class="break-time">19:14</span>
+                                    <span class="break-duration">15min</span>
+                                </div>
+                                <div class="break-pill">
+                                    <span class="break-icon">🚶</span>
+                                    <span class="break-time">21:04</span>
+                                    <span class="break-duration">20min</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ultradian-visual">
+                        <div class="focus-blocks-container">
+                            <div class="stat-label" style="margin-bottom: 12px;">90-Minute Focus Blocks (from wake time 14:04)</div>
+                            <div class="focus-blocks">
+                                <div class="focus-block peak">
+                                    <span class="block-num">#1</span>
+                                    <div class="block-time">14:04 - 15:34</div>
+                                    <div class="block-type">peak</div>
+                                </div>
+                                <div class="focus-block peak">
+                                    <span class="block-num">#2</span>
+                                    <div class="block-time">15:54 - 17:24</div>
+                                    <div class="block-type">peak</div>
+                                </div>
+                                <div class="focus-block high">
+                                    <span class="block-num">#3</span>
+                                    <div class="block-time">17:44 - 19:14</div>
+                                    <div class="block-type">high</div>
+                                </div>
+                                <div class="focus-block high">
+                                    <span class="block-num">#4</span>
+                                    <div class="block-time">19:34 - 21:04</div>
+                                    <div class="block-type">high</div>
+                                </div>
+                                <div class="focus-block moderate">
+                                    <span class="block-num">#5</span>
+                                    <div class="block-time">21:24 - 22:54</div>
+                                    <div class="block-type">moderate</div>
+                                </div>
+                                <div class="focus-block moderate">
+                                    <span class="block-num">#6</span>
+                                    <div class="block-time">23:14 - 00:44</div>
+                                    <div class="block-type">moderate</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-label" style="margin-top: 20px; margin-bottom: 10px;">Ultradian Energy Wave</div>
+                        <div class="wave-chart-container">
+                            <canvas id="ultradianWaveChart"></canvas>
+                        </div>
+                        <div class="ultradian-insight">
+                            <div class="insight-title">Ultradian Rhythm Insight</div>
+                            <div class="insight-text">Excellent! You completed 6 full 90-minute sleep cycles, allowing optimal memory consolidation and hormone regulation. Your energy should follow a natural 90-minute wave pattern throughout the day. Schedule demanding cognitive tasks during the first 60 minutes of each focus block, then allow 15-20 minutes for a natural energy dip before the next peak.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Trend -->
+            <div class="card weekly-trend">
+                <h3 class="card-title">Weekly Sleep Trend</h3>
+                <div class="weekly-bars">
+                    <div class="day-column">
+                        <div class="day-bar-container">
+                            <div class="day-bar poor" style="height: 49.30555555555556%" data-hours="5.9h"></div>
+                        </div>
+                        <span class="day-label">Jan 13</span>
+                    </div>
+                    <div class="day-column">
+                        <div class="day-bar-container">
+                            <div class="day-bar excellent" style="height: 100%" data-hours="15.3h"></div>
+                        </div>
+                        <span class="day-label">Jan 14</span>
+                    </div>
+                    <div class="day-column">
+                        <div class="day-bar-container">
+                            <div class="day-bar good" style="height: 65.0%" data-hours="7.8h"></div>
+                        </div>
+                        <span class="day-label">Jan 15</span>
+                    </div>
+                    <div class="day-column">
+                        <div class="day-bar-container">
+                            <div class="day-bar poor" style="height: 33.5%" data-hours="4.0h"></div>
+                        </div>
+                        <span class="day-label">Jan 16</span>
+                    </div>
+                    <div class="day-column">
+                        <div class="day-bar-container">
+                            <div class="day-bar excellent" style="height: 82.66666666666667%" data-hours="9.9h"></div>
+                        </div>
+                        <span class="day-label">Jan 17</span>
+                    </div>
+                    <div class="day-column">
+                        <div class="day-bar-container">
+                            <div class="day-bar good" style="height: 62.916666666666664%" data-hours="7.5h"></div>
+                        </div>
+                        <span class="day-label">Jan 19</span>
+                    </div>
+                    <div class="day-column">
+                        <div class="day-bar-container">
+                            <div class="day-bar excellent" style="height: 76.5%" data-hours="9.2h"></div>
+                        </div>
+                        <span class="day-label">Jan 25</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 24-Hour Heatmap -->
+            <div class="card heatmap">
+                <h3 class="card-title">Energy Heatmap</h3>
+                <div class="heatmap-grid">
+                    <div class="heatmap-label"></div>
+                    <div class="hour-label">0</div><div class="hour-label">1</div><div class="hour-label">2</div>
+                    <div class="hour-label">3</div><div class="hour-label">4</div><div class="hour-label">5</div>
+                    <div class="hour-label">6</div><div class="hour-label">7</div><div class="hour-label">8</div>
+                    <div class="hour-label">9</div><div class="hour-label">10</div><div class="hour-label">11</div>
+                    <div class="hour-label">12</div><div class="hour-label">13</div><div class="hour-label">14</div>
+                    <div class="hour-label">15</div><div class="hour-label">16</div><div class="hour-label">17</div>
+                    <div class="hour-label">18</div><div class="hour-label">19</div><div class="hour-label">20</div>
+                    <div class="hour-label">21</div><div class="hour-label">22</div><div class="hour-label">23</div>
+                    <div class="heatmap-label">Today</div>
+                    <div class="heatmap-cell level-5">83</div>
+                    <div class="heatmap-cell level-5">82</div>
+                    <div class="heatmap-cell level-5">80</div>
+                    <div class="heatmap-cell level-4">74</div>
+                    <div class="heatmap-cell level-4">69</div>
+                    <div class="heatmap-cell level-4">66</div>
+                    <div class="heatmap-cell level-3">63</div>
+                    <div class="heatmap-cell level-3">61</div>
+                    <div class="heatmap-cell level-3">60</div>
+                    <div class="heatmap-cell level-3">54</div>
+                    <div class="heatmap-cell level-3">54</div>
+                    <div class="heatmap-cell level-3">54</div>
+                    <div class="heatmap-cell level-3">54</div>
+                    <div class="heatmap-cell level-3">54</div>
+                    <div class="heatmap-cell level-3">54</div>
+                    <div class="heatmap-cell level-5">97</div>
+                    <div class="heatmap-cell level-5">96</div>
+                    <div class="heatmap-cell level-5">94</div>
+                    <div class="heatmap-cell level-5">93</div>
+                    <div class="heatmap-cell level-5">91</div>
+                    <div class="heatmap-cell level-4">79</div>
+                    <div class="heatmap-cell level-4">76</div>
+                    <div class="heatmap-cell level-5">83</div>
+                    <div class="heatmap-cell level-5">85</div>
+
+                </div>
+                <div class="heatmap-legend">
+                    <div class="legend-item"><div class="legend-color" style="background: linear-gradient(135deg, #ef4444, #dc2626)"></div><span>&lt;35%</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: linear-gradient(135deg, #f97316, #ea580c)"></div><span>35-50%</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: linear-gradient(135deg, #f59e0b, #d97706)"></div><span>50-65%</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: linear-gradient(135deg, #667eea, #764ba2)"></div><span>65-80%</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: linear-gradient(135deg, #10b981, #059669)"></div><span>80%+</span></div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            Productivity Intelligence Dashboard | Data synced from Amazfit Watch via Google Fit | Generated 2026-01-26 02:16
+        </footer>
+    </div>
+
+    <script>
+        const hourlyData = [83.8, 82.3, 80.7, 74.0, 69.9, 66.4, 63.6, 61.7, 60.0, 54.4, 54.4, 54.4, 54.4, 54.4, 54.4, 97.9, 96.3, 94.8, 93.2, 91.7, 79.7, 76.2, 83.6, 85.4];
+        const ctx = document.getElementById('energyChart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+        gradient.addColorStop(0, 'rgba(102, 126, 234, 0.8)');
+        gradient.addColorStop(1, 'rgba(118, 75, 162, 0.1)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23'],
+                datasets: [{
+                    label: 'Energy Score',
+                    data: hourlyData,
+                    fill: true,
+                    backgroundColor: gradient,
+                    borderColor: '#667eea',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    pointHoverBackgroundColor: '#667eea',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(26, 26, 46, 0.9)',
+                        titleColor: '#fff',
+                        bodyColor: '#a78bfa',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(context) { return context[0].label + ':00'; },
+                            label: function(context) { return 'Energy: ' + context.raw + '%'; }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#8892b0', font: { size: 10 } }
+                    },
+                    y: {
+                        min: 0, max: 100,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#8892b0', font: { size: 10 }, callback: function(v) { return v + '%'; } }
+                    }
+                }
+            }
+        });
+
+        // Ultradian Wave Chart
+        const waveData = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 80.0, 33.906249999999986, 32.81250000000001, 72.5, 30.624999999999986, 29.531250000000007, 65.0, 27.34374999999999, 26.250000000000007, 0];
+        const waveCtx = document.getElementById('ultradianWaveChart').getContext('2d');
+        const waveGradient = waveCtx.createLinearGradient(0, 0, 0, 120);
+        waveGradient.addColorStop(0, 'rgba(16, 185, 129, 0.6)');
+        waveGradient.addColorStop(0.5, 'rgba(102, 126, 234, 0.4)');
+        waveGradient.addColorStop(1, 'rgba(118, 75, 162, 0.1)');
+
+        new Chart(waveCtx, {
+            type: 'line',
+            data: {
+                labels: ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23'],
+                datasets: [{
+                    label: 'Ultradian Energy Wave',
+                    data: waveData,
+                    fill: true,
+                    backgroundColor: waveGradient,
+                    borderColor: '#10b981',
+                    borderWidth: 2,
+                    tension: 0.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: '#10b981',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2
+                },
+                {
+                    label: 'Actual Energy',
+                    data: hourlyData,
+                    fill: false,
+                    borderColor: 'rgba(167, 139, 250, 0.5)',
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    tension: 0.4,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            color: '#8892b0',
+                            font: { size: 10 },
+                            boxWidth: 12,
+                            padding: 10,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(26, 26, 46, 0.9)',
+                        titleColor: '#fff',
+                        bodyColor: '#10b981',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: true,
+                        callbacks: {
+                            title: function(context) { return context[0].label + ':00'; },
+                            label: function(context) {
+                                const label = context.dataset.label;
+                                return label + ': ' + Math.round(context.raw) + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.03)' },
+                        ticks: { color: '#8892b0', font: { size: 9 } }
+                    },
+                    y: {
+                        min: 0, max: 100,
+                        grid: { color: 'rgba(255, 255, 255, 0.03)' },
+                        ticks: { color: '#8892b0', font: { size: 9 }, stepSize: 25 }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
