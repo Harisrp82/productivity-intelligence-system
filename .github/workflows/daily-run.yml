@@ -2,10 +2,8 @@ name: Daily Productivity Workflow
 
 on:
   schedule:
-    # Run at 6:00 AM UTC daily (adjust for your timezone)
-    # For EST: use "0 11 * * *" (6 AM EST = 11 AM UTC)
-    # For PST: use "0 14 * * *" (6 AM PST = 2 PM UTC)
-    - cron: "0 6 * * *"
+    # Run at 6:00 AM IST daily (00:30 UTC)
+    - cron: "30 0 * * *"
   workflow_dispatch:
     # Allow manual triggering from GitHub Actions UI
     inputs:
@@ -17,7 +15,6 @@ on:
 env:
   GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
   GOOGLE_DOC_ID: ${{ secrets.GOOGLE_DOC_ID }}
-  GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
   DATABASE_URL: "sqlite:///productivity.db"
   TIMEZONE: ${{ vars.TIMEZONE || 'UTC' }}
 
@@ -61,13 +58,6 @@ jobs:
           echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
           echo '${{ secrets.GOOGLE_TOKEN_JSON }}' > token.json
           echo '${{ secrets.GOOGLE_TOKEN_FIT_JSON }}' > token_fit.json
-          # Optional tokens
-          if [ -n "${{ secrets.GOOGLE_TOKEN_CALENDAR_JSON }}" ]; then
-            echo '${{ secrets.GOOGLE_TOKEN_CALENDAR_JSON }}' > token_calendar.json
-          fi
-          if [ -n "${{ secrets.GOOGLE_TOKEN_SHEETS_JSON }}" ]; then
-            echo '${{ secrets.GOOGLE_TOKEN_SHEETS_JSON }}' > token_sheets.json
-          fi
 
       - name: Create logs directory
         run: mkdir -p logs
